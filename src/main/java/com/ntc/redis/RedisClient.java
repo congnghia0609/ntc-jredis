@@ -32,11 +32,11 @@ import org.slf4j.LoggerFactory;
  * @since Sep 10, 2015
  */
 public class RedisClient {
-    private final Logger logger = LoggerFactory.getLogger(RedisClient.class);
+    private static final Logger logger = LoggerFactory.getLogger(RedisClient.class);
 	private static final ConcurrentHashMap<String, RedisClient> instanceMap = new ConcurrentHashMap<String, RedisClient>(16, 0.9f, 16);
 	private static Lock lock = new ReentrantLock();
 
-	private final RedissonClient redisson;
+	private RedissonClient redisson;
 
 	public static RedisClient getInstance(String configName) {
 		String identify = NConfig.getConfig().getString(NConfig.genKey(configName, "host"));
@@ -72,6 +72,10 @@ public class RedisClient {
 		return redisson;
 	}
 
+    public boolean isShuttingDown() {
+		return redisson.isShuttingDown();
+	}
+    
 	public void shutdown() {
 		redisson.shutdown();
 	}

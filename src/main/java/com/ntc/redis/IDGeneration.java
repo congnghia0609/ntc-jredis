@@ -19,6 +19,11 @@ package com.ntc.redis;
 import org.redisson.api.RAtomicLong;
 import org.redisson.api.RedissonClient;
 
+/**
+ *
+ * @author nghiatc
+ * @since Sep 10, 2015
+ */
 public class IDGeneration {
 	private final RedissonClient redisson;
 
