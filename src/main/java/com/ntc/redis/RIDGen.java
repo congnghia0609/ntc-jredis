@@ -88,8 +88,8 @@ public class RIDGen {
         return idGen.incrementAndGet();
     }
 
-    public long setStartId(String key, int val) {
+    public long setStartId(String key, long val) {
         RAtomicLong idGen = rcli.getConnect().getAtomicLong(genKey(key));
-        return idGen.addAndGet(val);
+        return idGen.getAndSet(val);
     }
 }
