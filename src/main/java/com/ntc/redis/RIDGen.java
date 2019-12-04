@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.ntc.redis;
 
 import java.util.Map;
@@ -31,88 +30,66 @@ import org.slf4j.LoggerFactory;
  */
 public class RIDGen {
     private static final Logger logger = LoggerFactory.getLogger(RIDGen.class);
-	private RedisClient rediscli;
+    private RedisClient rcli;
     private static Map<String, RIDGen> mapRIDGens = new ConcurrentHashMap<>();
     private static Lock lock = new ReentrantLock();
 
-	public static RIDGen getInstance() {
-		return getInstance("ridgen");
-	}
-    
+    public static RIDGen getInstance() {
+        return getInstance("ridgen");
+    }
+
     public static RIDGen getInstance(String configName) {
-        if(configName == null || configName.isEmpty()){
+        if (configName == null || configName.isEmpty()) {
             return null;
         }
         RIDGen instance = mapRIDGens.containsKey(configName) ? mapRIDGens.get(configName) : null;
-		if(instance == null) {
-			lock.lock();
-			try {
+        if (instance == null) {
+            lock.lock();
+            try {
                 instance = mapRIDGens.containsKey(configName) ? mapRIDGens.get(configName) : null;
-				if(instance == null) {
-					instance = new RIDGen(configName);
-                    mapRIDGens.put(configName, instance);
-				} else {
-                    if (!instance.isOpen()) {
-                        instance.close();
-                        instance = new RIDGen(configName);
-                        mapRIDGens.put(configName, instance);
-                    }
-                }
-			} finally {
-				lock.unlock();
-			}
-		} else {
-            if (!instance.isOpen()) {
-                lock.lock();
-                try {
-                    instance.close();
+                if (instance == null) {
                     instance = new RIDGen(configName);
                     mapRIDGens.put(configName, instance);
-                } finally {
-                    lock.unlock();
                 }
+            } finally {
+                lock.unlock();
             }
         }
-		return instance;
-	}
+        return instance;
+    }
 
-	private RIDGen() {
-		rediscli = RedisClient.getInstance("ridgen");
-		if(rediscli == null) {
-			System.out.println("Don't create connect to redis");
-		}
-	}
-    
+    private RIDGen() {
+        rcli = RedisClient.getInstance("ridgen");
+        if (rcli == null) {
+            System.out.println("Don't create connect to redis");
+        }
+    }
+
     private RIDGen(String configName) {
         if (configName == null || configName.isEmpty()) {
             throw new ExceptionInInitializerError("configName much not empty...");
         }
-		rediscli = RedisClient.getInstance(configName);
-		if(rediscli == null) {
-			System.out.println("Don't create connect to redis");
-		}
-	}
-    
-    public boolean isOpen() {
-        return !rediscli.isShuttingDown();
-    }
-    
-    public void close() {
-        rediscli.shutdown();
-        rediscli = null;
+        rcli = RedisClient.getInstance(configName);
+        if (rcli == null) {
+            System.out.println("Don't create connect to redis");
+        }
     }
 
-	public long generateId(String key) {
-		RAtomicLong idGen = rediscli.getConnect().getAtomicLong(genKey(key));
-		return idGen.incrementAndGet();
-	}
+    public RedisClient getRedisClient() {
+        return rcli;
+    }
 
-	public long setStartId(String key, int val) {
-		RAtomicLong idGen = rediscli.getConnect().getAtomicLong(genKey(key));
-		return idGen.addAndGet(val);
-	}
+    private String genKey(String key) {
+        return "ntc." + key;
+    }
 
-	public String genKey(String key) {
-		return "ntc." + key;
-	}
+    public long generateId(String key) {
+        RAtomicLong idGen = rcli.getConnect().getAtomicLong(genKey(key));
+        return idGen.incrementAndGet();
+    }
+
+    public long setStartId(String key, int val) {
+        RAtomicLong idGen = rcli.getConnect().getAtomicLong(genKey(key));
+        return idGen.addAndGet(val);
+    }
 }

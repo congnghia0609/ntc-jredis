@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.ntc.redis;
 
 import org.redisson.api.RAtomicLong;
@@ -25,28 +24,27 @@ import org.redisson.api.RedissonClient;
  * @since Sep 10, 2015
  */
 public class IDGeneration {
-	private final RedissonClient redisson;
+    private final RedissonClient redisson;
+    public static IDGeneration Instance = new IDGeneration();
 
-	public static IDGeneration Instance = new IDGeneration();
+    private IDGeneration() {
+        redisson = RedisClient.getInstance("autoGeneration").getConnect();
+        if (redisson == null) {
+            System.out.println("Don't create connect to redis");
+        }
+    }
+    
+    private String genKey(String key) {
+        return "ntc." + key;
+    }
 
-	private IDGeneration() {
-		redisson = RedisClient.getInstance("autoGeneration").getConnect();
-		if(redisson == null) {
-			System.out.println("Don't create connect to redis");
-		}
-	}
+    public long generateId(String key) {
+        RAtomicLong idGen = redisson.getAtomicLong(genKey(key));
+        return idGen.incrementAndGet();
+    }
 
-	public long generateId(String key) {
-		RAtomicLong idGen = redisson.getAtomicLong(genKey(key));
-		return idGen.incrementAndGet();
-	}
-
-	public long setStartId(String key, int val) {
-		RAtomicLong idGen = redisson.getAtomicLong(genKey(key));
-		return idGen.addAndGet(val);
-	}
-
-	public String genKey(String key) {
-		return "ntc." + key;
-	}
+    public long setStartId(String key, int val) {
+        RAtomicLong idGen = redisson.getAtomicLong(genKey(key));
+        return idGen.addAndGet(val);
+    }
 }

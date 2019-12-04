@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.ntc.redis;
 
 import com.ntc.configer.NConfig;
@@ -33,50 +32,69 @@ import org.slf4j.LoggerFactory;
  */
 public class RedisClient {
     private static final Logger logger = LoggerFactory.getLogger(RedisClient.class);
-	private static final ConcurrentHashMap<String, RedisClient> instanceMap = new ConcurrentHashMap<String, RedisClient>(16, 0.9f, 16);
-	private static Lock lock = new ReentrantLock();
+    private static final ConcurrentHashMap<String, RedisClient> instanceMap = new ConcurrentHashMap<String, RedisClient>(16, 0.9f, 16);
+    private static Lock lock = new ReentrantLock();
 
-	private RedissonClient redisson;
+    private RedissonClient redisson;
 
-	public static RedisClient getInstance(String configName) {
-		String identify = NConfig.getConfig().getString(NConfig.genKey(configName, "host"));
-		RedisClient instance = instanceMap.get(identify);
-		if(instance == null) {
-			lock.lock();
-			try {
-				instance = instanceMap.get(identify);
-				if(instance == null) {
-					instance = new RedisClient(configName);
-					instanceMap.put(identify, instance);
-				}
-			} finally {
-				lock.unlock();
-			}
-		}
+    public static RedisClient getInstance(String configName) {
+        if (configName == null || configName.isEmpty()) {
+            return null;
+        }
+        RedisClient instance = instanceMap.get(configName);
+        if (instance == null) {
+            lock.lock();
+            try {
+                instance = instanceMap.get(configName);
+                if (instance == null) {
+                    instance = new RedisClient(configName);
+                    instanceMap.put(configName, instance);
+                } else {
+                    if (instance.isShuttingDown()) {
+                        instance.shutdown();
+                        instance = new RedisClient(configName);
+                        instanceMap.put(configName, instance);
+                    }
+                }
+            } finally {
+                lock.unlock();
+            }
+        } else {
+            if (instance.isShuttingDown()) {
+                lock.lock();
+                try {
+                    instance.shutdown();
+                    instance = new RedisClient(configName);
+                    instanceMap.put(configName, instance);
+                } finally {
+                    lock.unlock();
+                }
+            }
+        }
 
-		return instance;
-	}
+        return instance;
+    }
 
-	public RedisClient(String configName) {
-		Config config = new Config();
-		config.useSingleServer().setAddress(NConfig.getConfig().getString(NConfig.genKey(configName, "host"), "redis://127.0.0.1:6379"));
+    private RedisClient(String configName) {
+        Config config = new Config();
+        config.useSingleServer().setAddress(NConfig.getConfig().getString(NConfig.genKey(configName, "host"), "redis://127.0.0.1:6379"));
         config.useSingleServer().setClientName(configName);
-        
-		redisson = Redisson.create(config);
-		if (redisson == null) {
-			System.out.println("don't create redis session");
-		}
-	}
 
-	public RedissonClient getConnect() {
-		return redisson;
-	}
+        redisson = Redisson.create(config);
+        if (redisson == null) {
+            System.out.println("don't create redis session");
+        }
+    }
+
+    public RedissonClient getConnect() {
+        return redisson;
+    }
 
     public boolean isShuttingDown() {
-		return redisson.isShuttingDown();
-	}
-    
-	public void shutdown() {
-		redisson.shutdown();
-	}
+        return redisson.isShuttingDown();
+    }
+
+    public void shutdown() {
+        redisson.shutdown();
+    }
 }
